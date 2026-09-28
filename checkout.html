@@ -1,0 +1,65 @@
+<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>Finalizar pelo WhatsApp | Gabs Scrubs</title><link rel="stylesheet" href="styles.css"><script defer src="products.js"></script><script defer src="app.js"></script></head><body>
+<div class="announcement">PEDIDO PELO WHATSAPP • PAGAMENTO COMBINADO NO ATENDIMENTO</div><header class="site-header"><div class="container header-inner"><a class="logo" href="index.html"><span class="logo-mark">G</span><span class="logo-word">GABS SCRUBS</span></a><div></div><div class="header-actions"><button class="icon-btn cart-open" aria-label="Sacola"></button></div></div></header><script>document.addEventListener('DOMContentLoaded',()=>{document.querySelector('.cart-open').innerHTML=icon('bag')+'<span class="badge cart-badge">0</span>';});</script>
+<main class="container checkout-wrap"><section class="checkout-form"><span class="eyebrow">Finalizar pedido</span><h2>Quase pronto.</h2><p style="color:var(--muted);line-height:1.6;max-width:620px;margin-top:-4px">Confira seus dados e envie o pedido para a Gabs no WhatsApp. Por lá você confirma entrega, disponibilidade e faz o pagamento.</p><div class="field-grid" id="whatsapp-customer-form"><div class="field full"><label for="wa-name">Nome completo</label><input id="wa-name" autocomplete="name" required></div><div class="field"><label for="wa-cep">CEP</label><input id="wa-cep" inputmode="numeric" autocomplete="postal-code" maxlength="9" placeholder="00000-000"></div><div class="field"><label for="wa-number">Número</label><input id="wa-number" inputmode="numeric"></div><div class="field full"><label for="wa-address">Endereço</label><input id="wa-address" autocomplete="street-address"></div><div class="field"><label for="wa-city">Cidade</label><input id="wa-city" autocomplete="address-level2"></div><div class="field"><label for="wa-state">Estado</label><input id="wa-state" autocomplete="address-level1" maxlength="2" placeholder="PA"></div><div class="field full"><label for="wa-note">Observação <span style="color:var(--muted);font-weight:400">(opcional)</span></label><input id="wa-note" placeholder="Ex.: referência de entrega"></div></div><div class="staging-note" style="margin-top:28px"><strong>Pagamento pelo WhatsApp.</strong><br>O site envia o resumo do carrinho. A Gabs confirma o pedido e combina o pagamento diretamente no atendimento.</div><button class="btn full" id="whatsapp-order-btn" type="button">Enviar pedido no WhatsApp</button><div class="form-note" id="whatsapp-order-note" aria-live="polite"></div></section><aside class="checkout-summary"><span class="eyebrow">Seu pedido</span><h2>Confira a sacola</h2><div id="checkout-items"></div><div class="cart-row" style="margin-top:20px;padding-top:18px;border-top:1px solid var(--line)"><span>Total dos produtos</span><strong id="checkout-total">R$ 0</strong></div><p style="font-size:12px;line-height:1.5;color:var(--muted);margin-top:14px">Frete e forma de pagamento são confirmados pelo WhatsApp.</p></aside></main>
+<div class="overlay" id="cart-overlay"><aside class="drawer"><div class="drawer-head"><h3>Sua sacola <span class="cart-badge">0</span></h3><button class="drawer-close" id="cart-close">×</button></div><div class="cart-items" id="cart-items"></div><div class="cart-foot" id="cart-foot"><div class="cart-row"><span>Subtotal</span><strong id="cart-subtotal">R$ 0</strong></div></div></aside></div>
+<script>
+(function(){
+  const WHATSAPP_URL='https://wa.me/message/4ITMQF2GQOCH01';
+  const moneyLocal=v=>new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(v);
+
+  function value(id){return document.getElementById(id)?.value.trim()||'';}
+  function cart(){try{return JSON.parse(localStorage.getItem('gabs_cart')||'[]')}catch{return[]}}
+  function product(slug){return (window.GABS_PRODUCTS||[]).find(p=>p.slug===slug)}
+
+  function buildMessage(){
+    const items=cart();
+    const name=value('wa-name');
+    if(!items.length) return {error:'Sua sacola está vazia.'};
+    if(!name) return {error:'Digite seu nome para enviar o pedido.'};
+
+    let total=0;
+    const lines=items.map((item,index)=>{
+      const p=product(item.slug);
+      if(!p) return null;
+      const lineTotal=p.price*item.qty;
+      total+=lineTotal;
+      return `${index+1}. ${p.name}\n   Cor: ${item.color} | Tamanho: ${item.size} | Qtd: ${item.qty}\n   ${moneyLocal(lineTotal)}`;
+    }).filter(Boolean);
+
+    const address=[value('wa-address'),value('wa-number')].filter(Boolean).join(', ');
+    const cityState=[value('wa-city'),value('wa-state').toUpperCase()].filter(Boolean).join('/');
+    const delivery=[value('wa-cep')&&`CEP: ${value('wa-cep')}`,address,cityState].filter(Boolean);
+
+    let message=`Olá! Quero finalizar este pedido da Gabs Scrubs.\n\n*Pedido*\n${lines.join('\n\n')}\n\n*Total dos produtos: ${moneyLocal(total)}*\n\n*Cliente*\n${name}`;
+    if(delivery.length) message+=`\n\n*Entrega*\n${delivery.join('\n')}`;
+    if(value('wa-note')) message+=`\n\n*Observação*\n${value('wa-note')}`;
+    message+='\n\nPode confirmar disponibilidade, frete e forma de pagamento para mim?';
+    return {message};
+  }
+
+  function init(){
+    const announcement=document.querySelector('.announcement');
+    if(announcement) announcement.textContent='PEDIDO PELO WHATSAPP • PAGAMENTO COMBINADO NO ATENDIMENTO';
+    const btn=document.getElementById('whatsapp-order-btn');
+    const note=document.getElementById('whatsapp-order-note');
+    if(!btn) return;
+
+    const cep=document.getElementById('wa-cep');
+    cep?.addEventListener('input',e=>{let v=e.target.value.replace(/\D/g,'').slice(0,8);if(v.length>5)v=v.slice(0,5)+'-'+v.slice(5);e.target.value=v;});
+    const state=document.getElementById('wa-state');
+    state?.addEventListener('input',e=>e.target.value=e.target.value.replace(/[^a-zA-Z]/g,'').slice(0,2).toUpperCase());
+
+    btn.addEventListener('click',async()=>{
+      const result=buildMessage();
+      if(result.error){note.textContent=result.error;document.getElementById('wa-name')?.focus();return;}
+      note.textContent='Abrindo o WhatsApp…';
+      try{await navigator.clipboard?.writeText(result.message)}catch{}
+      const url=WHATSAPP_URL+'?text='+encodeURIComponent(result.message);
+      window.location.href=url;
+    });
+  }
+
+  window.addEventListener('DOMContentLoaded',()=>setTimeout(init,0));
+})();
+</script>
+</body></html>
