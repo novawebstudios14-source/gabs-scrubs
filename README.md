@@ -1,15 +1,13 @@
-# Gabs Scrubs
+# Gabs — painel separado na Vercel
 
-Loja e painel administrativo em `/admin.html`. O painel usa o mesmo fluxo do Seu Moura: usuário e senha, seleção de fotos, revisão antes de publicar, edição, pausa e logout. O catálogo existente é preservado e pode ser editado.
+Projeto Vercel: `gabs-painel`. A raiz abre o login administrativo; `/loja/index.html` permite conferir o catálogo publicado nesta instalação. O site original e a branch `main` não são alterados por este projeto.
 
-## Executar
+O painel cadastra, revisa, publica, edita e pausa scrubs, conjuntos e jalecos, com preço, cores, tamanhos e até 10 fotos. Cada foto é enviada em uma requisição própria para respeitar o limite das Functions. As fotos são decodificadas e regravadas pelo servidor.
 
-Node 20 ou superior. Execute `npm ci`, configure `ADMIN_USER`, `ADMIN_PASSWORD` e `SESSION_SECRET` (segredo aleatório de pelo menos 32 caracteres) no ambiente privado e rode `npm start`. Sem configuração, o painel bloqueia o acesso. Nunca coloque credenciais no GitHub.
+Produtos, sessões, fotos e limites de acesso são persistidos em um Vercel Blob privado. Escritas condicionais por ETag evitam sobrescrever edições concorrentes. Sessões expiram após oito horas; logout invalida a sessão no armazenamento.
 
-## Hospedar
+Variáveis de produção, definidas apenas na Vercel: `ADMIN_USER`, `ADMIN_PASSWORD`, `SESSION_SECRET` (ao menos 32 caracteres) e `BLOB_STORE_ID`. O Blob usa a identidade OIDC do projeto, sem credenciais no repositório. Não publique o armazenamento privado.
 
-O servidor precisa de HTTPS e um volume persistente. Configure `NODE_ENV=production`, `DATA_DIR=/data` e monte um volume em `/data`. Em Railway, use o repositório e `npm start`; mantenha uma única instância. Faça backup do volume que contém catálogo e fotos. GitHub Pages continua servindo a prévia estática, mas não executa o painel nem recebe publicações. Para operar o catálogo administrável, abra a loja e o painel no endereço do servidor Node.
+`npm ci && npm run build` prepara os arquivos públicos e o catálogo inicial. `npm test` verifica o fluxo de login, upload, publicação, edição, concorrência, pausa, persistência e logout. O servidor legado `server.mjs` é apenas a referência anterior para hospedagem com volume; a Vercel usa `api/handler.js`.
 
-A autenticação usa cookies HttpOnly/Secure/SameSite, sessões de oito horas, proteção CSRF e limite de tentativas. As fotos são decodificadas, redimensionadas e regravadas pelo servidor. Dados privados e código do servidor não são expostos pelo servidor HTTP.
-
-Execute `npm test` para verificar login, publicação, edição, pausa, persistência e bloqueios de acesso.
+A prévia independente consome `/api/products`. O site original só receberá os produtos desta instalação quando for conectado a essa API; essa integração não faz parte desta publicação separada.
