@@ -73,6 +73,7 @@ function addToCart(slug,size,color){
 }
 
 function renderCart(){
+  state.cart=state.cart.filter(i=>window.GABS_PRODUCTS.some(p=>p.slug===i.slug));
   const items=$('#cart-items'); const foot=$('#cart-foot'); if(!items) return;
   if(!state.cart.length){ items.innerHTML='<div class="empty-cart"><div><p class="serif" style="font-size:34px;margin:0 0 8px">Sua sacola está vazia.</p><p>Quando encontrar um scrub que goste, ele aparece aqui.</p></div></div>'; if(foot) foot.style.display='none'; return; }
   if(foot) foot.style.display='block';
@@ -160,10 +161,11 @@ function renderCollection(){
 
 function renderPDP(){
   const root=$('#pdp-root'); if(!root) return;
-  const slug=new URLSearchParams(location.search).get('slug') || window.GABS_PRODUCTS[0].slug;
-  const p=window.GABS_PRODUCTS.find(x=>x.slug===slug) || window.GABS_PRODUCTS[0];
+  const slug=new URLSearchParams(location.search).get('slug');
+  const p=slug?window.GABS_PRODUCTS.find(x=>x.slug===slug):window.GABS_PRODUCTS[0];
+  if(!p){root.innerHTML='<div class="container"><h1>Produto indisponível</h1><p>Este produto não está disponível no catálogo.</p><a href="feminino.html">Ver coleção</a></div>';return;}
   document.title=`${p.name} | Gabs Scrubs`;
-  const gallery=[p.image,p.image2,p.image,p.image2];
+  const gallery=p.photos?.length?p.photos:[p.image,p.image2];
   root.innerHTML=`<div class="container"><div class="breadcrumb"><a href="index.html">Início</a> / <a href="${p.gender==='masculino'?'masculino.html':'feminino.html'}">${p.gender==='masculino'?'Masculino':'Feminino'}</a> / ${p.name}</div>
   <div class="pdp"><div class="gallery">${gallery.map((img,i)=>`<figure><img src="${img}" alt="${p.name}${i?` — detalhe ${i+1}`:''}"></figure>`).join('')}</div>
   <aside class="purchase-panel" data-pdp="${p.slug}">
@@ -244,7 +246,7 @@ function applyHumanCopy(){
       details:'Modelagem slim com bolsos bem posicionados e acabamento limpo.'
     }
   };
-  window.GABS_PRODUCTS?.forEach(p=>Object.assign(p,products[p.slug]||{}));
+  window.GABS_PRODUCTS?.filter(p=>!p.updatedAt).forEach(p=>Object.assign(p,products[p.slug]||{}));
 
   const announcement=$('.announcement');
   if(announcement) announcement.textContent=location.pathname.endsWith('checkout.html') ? 'PRÉVIA DA LOJA • pagamentos ainda não estão habilitados' : 'PRÉVIA DA LOJA • catálogo, estoque e pagamentos ainda serão conectados';
@@ -375,6 +377,9 @@ function applyCollectionQuery(){
   const q=new URLSearchParams(location.search); const c=q.get('color'); if(!c) return; const b=$(`.filter-colors .swatch[data-color="${c}"]`); if(b) b.classList.add('active');
 }
 
-window.addEventListener('DOMContentLoaded',()=>{
+window.addEventListener('DOMContentLoaded',async()=>{
+  try { const response=await fetch('/api/products',{cache:'no-store'});if(response.ok){const data=await response.json();const escape=value=>String(value).replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));window.GABS_PRODUCTS=data.products.map(p=>({...p,...Object.fromEntries(['name','fit','description','fabric','details'].map(k=>[k,escape(p[k]||'')])),colors:p.colors.map(c=>[escape(c[0]),c[1]])}));} } catch {}
+  state.cart=state.cart.filter(i=>window.GABS_PRODUCTS.some(p=>p.slug===i.slug));
+  document.querySelectorAll('.account').forEach(button=>button.addEventListener('click',()=>location.href='admin.html'));
   applyHumanCopy(); renderBestSellers(); applyCollectionQuery(); renderCollection(); renderPDP(); renderCart(); renderCheckout(); updateBadges(); bindGlobal();
 });

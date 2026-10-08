@@ -1,0 +1,31 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {spawn} from 'node:child_process';
+import {mkdtemp,rm} from 'node:fs/promises';
+import {tmpdir} from 'node:os';
+import path from 'node:path';
+import sharp from 'sharp';
+test('login, fotos, catálogo, edição, pausa, persistência e logout',async()=>{
+ const dir=await mkdtemp(path.join(tmpdir(),'gabs-test-')),port=35000+Math.floor(Math.random()*10000),base=`http://localhost:${port}`;let server;
+ const start=async()=>{server=spawn(process.execPath,['server.mjs'],{env:{...process.env,PORT:String(port),DATA_DIR:dir,ADMIN_USER:'test',ADMIN_PASSWORD:'test-password',SESSION_SECRET:'test-secret-at-least-thirty-two-characters',NODE_ENV:'test'},stdio:'ignore'});for(let i=0;i<100;i++){try{if((await fetch(base+'/api/products')).ok)return;}catch{}await new Promise(r=>setTimeout(r,50));}throw Error('Servidor não iniciou');};
+ const stop=()=>new Promise(resolve=>{server.once('exit',resolve);server.kill();});
+ const post=(route,data,cookie='',csrf='',origin=base)=>fetch(base+'/api/admin/'+route,{method:'POST',headers:{Origin:origin,'Content-Type':'application/json',Cookie:cookie,'X-CSRF-Token':csrf},body:JSON.stringify(data)});
+ try{await start();const count=(await (await fetch(base+'/api/products')).json()).products.length;assert.equal(count,8);
+ assert.equal((await post('products',{})).status,401);assert.equal((await post('login',{username:'test',password:'test-password'},'','','https://evil.example')).status,403);
+ assert.equal((await post('login',{username:'test',password:'wrong'})).status,401);
+ const login=await post('login',{username:'test',password:'test-password'});assert.equal(login.status,200);const {csrf}=await login.json(),cookie=login.headers.get('set-cookie').split(';')[0];assert.match(login.headers.get('set-cookie'),/HttpOnly/);
+ assert.equal((await post('products',{},cookie)).status,403);
+ const photo='data:image/png;base64,'+(await sharp({create:{width:8,height:8,channels:3,background:'#233244'}}).png().toBuffer()).toString('base64');
+ const fields={name:'Jaleco teste',category:'jalecos',gender:'unissex',price:249.9,fit:'Alfaiataria leve',sizes:['P','M'],colors:[['Branco','#ffffff']],description:'Descrição personalizada',fabric:'Algodão',details:'Bolsos'};
+ assert.equal((await post('products',{fields,photos:['data:image/png;base64,AAAA']},cookie,csrf)).status,400);
+ const published=await post('products',{fields,photos:[photo]},cookie,csrf);assert.equal(published.status,200,await published.clone().text());const {product}=await published.json();assert.ok(product.slug);assert.equal((await fetch(base+product.image)).status,200);
+ let publicItems=(await (await fetch(base+'/api/products')).json()).products;assert.equal(publicItems.length,count+1);assert.equal(publicItems.at(-1).price,249.9);
+ assert.equal((await post('products',{slug:product.slug,fields:{...fields,price:299.9},photos:[]},cookie,csrf)).status,200);
+ assert.equal((await post('status',{slug:product.slug,status:'paused'},cookie,csrf)).status,200);assert.equal((await fetch(base+product.image)).status,404);assert.equal((await (await fetch(base+'/api/products')).json()).products.length,count);
+ assert.equal((await post('status',{slug:product.slug,status:'published'},cookie,csrf)).status,200);
+ for(const file of ['/server.mjs','/data/catalog.json','/.env','/package.json','/assets/../server.mjs'])assert.equal((await fetch(base+file)).status,404);
+ assert.equal((await post('logout',{},cookie,csrf)).status,200);assert.equal((await fetch(base+'/api/admin/products',{headers:{Cookie:cookie}})).status,401);
+ await stop();await start();publicItems=(await (await fetch(base+'/api/products')).json()).products;assert.equal(publicItems.length,count+1);assert.equal(publicItems.find(p=>p.slug===product.slug).price,299.9);assert.equal((await fetch(base+product.image)).status,200);
+ for(let i=0;i<8;i++)await post('login',{username:'test',password:'wrong'});assert.equal((await post('login',{username:'test',password:'test-password'})).status,429);
+ }finally{if(server&&server.exitCode===null)await stop();await rm(dir,{recursive:true,force:true});}
+});
