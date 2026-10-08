@@ -378,7 +378,9 @@ function applyCollectionQuery(){
 }
 
 window.addEventListener('DOMContentLoaded',async()=>{
-  try { const response=await fetch('/api/products',{cache:'no-store'});if(response.ok){const data=await response.json();const escape=value=>String(value).replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));window.GABS_PRODUCTS=data.products.map(p=>({...p,...Object.fromEntries(['name','fit','description','fabric','details'].map(k=>[k,escape(p[k]||'')])),colors:p.colors.map(c=>[escape(c[0]),c[1]])}));} } catch {}
+  let heroProducts=[];
+  try { const response=await fetch('/api/products',{cache:'no-store'});if(response.ok){const data=await response.json();heroProducts=data.products;const escape=value=>String(value).replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));window.GABS_PRODUCTS=data.products.map(p=>({...p,...Object.fromEntries(['name','fit','description','fabric','details'].map(k=>[k,escape(p[k]||'')])),colors:p.colors.map(c=>[escape(c[0]),c[1]])}));} } catch {}
+  window.initGabsHero?.(heroProducts);
   state.cart=state.cart.filter(i=>window.GABS_PRODUCTS.some(p=>p.slug===i.slug));
   document.querySelectorAll('.account').forEach(button=>button.addEventListener('click',()=>location.href='admin.html'));
   applyHumanCopy(); renderBestSellers(); applyCollectionQuery(); renderCollection(); renderPDP(); renderCart(); renderCheckout(); updateBadges(); bindGlobal();

@@ -10,7 +10,7 @@ const user=process.env.ADMIN_USER||'',password=process.env.ADMIN_PASSWORD||'',se
 const salt=createHmac('sha256',secret).update('password-salt').digest(),hash=scryptSync(password,salt,64),sessions=new Map(),attempts=new Map();
 const context={window:{},document:{querySelector:()=>true},location:{},setTimeout:()=>0};
 // Only evaluate the original catalog declaration, never browser behavior.
-vm.runInNewContext((await readFile(path.join(root,'products.js'),'utf8')).split('(function initHeroSlider')[0],context);
+vm.runInNewContext((await readFile(path.join(root,'products.js'),'utf8')).split('window.initGabsHero=')[0],context);
 let products;
 try{products=JSON.parse(await readFile(catalog,'utf8'));if(!Array.isArray(products))throw Error('Catálogo inválido');}
 catch(e){if(e.code!=='ENOENT')throw e;products=context.window.GABS_PRODUCTS.map(p=>({...p,photos:[p.image,p.image2],status:'published',legacy:true}));}

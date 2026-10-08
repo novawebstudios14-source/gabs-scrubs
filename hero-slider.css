@@ -89,3 +89,8 @@
   .hero-model:nth-child(5) img{object-position:center 20%!important}
   .hero-model:nth-child(6) img{object-position:center 50%!important}
 }
+
+/* Portfolio photos published through the independent admin panel. */
+.hero-model.portfolio-slide{background-image:none!important}
+.hero-model.portfolio-slide img{opacity:1!important;object-position:center 20%!important}
+.hero-model.portfolio-slide::after{content:attr(data-caption)!important}
